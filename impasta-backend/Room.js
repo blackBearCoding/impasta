@@ -1,5 +1,12 @@
-import { LOBBY_STATE, STARTING_STATE, DRAWING_STATE, VOTING_STATE, END_ROUND_STATE } from './constants.js';
-import { randArrayElement, randObjectElement } from './utils.js';
+import {
+  LOBBY_STATE,
+  STARTING_STATE,
+  DRAWING_STATE,
+  VOTING_STATE,
+  END_ROUND_STATE,
+  END_GAME_STATE
+} from './constants.js';
+import { randArrayElement, randObjectElement, mapIdToName } from './utils.js';
 
 export default class Room {
   constructor() {
@@ -11,6 +18,7 @@ export default class Room {
     this.prompt = null;
     this.impasta = null;
     this.currentTurn = 0;
+    this.rounds = 0;
   }
 
   generateCode = () => {
@@ -23,7 +31,7 @@ export default class Room {
     return code;
   };
 
-  addPlayer = socket => {
+  addPlayer = (socket) => {
     const { playerName, playerId } = socket.handshake.query;
     this.playerSockets[playerId] = {
       socket,
@@ -31,6 +39,7 @@ export default class Room {
       playerId,
       connected: true,
       votedFor: null,
+      votesAgainst: [],
       score: 0
     };
 
@@ -46,24 +55,32 @@ export default class Room {
     this.sendAll('player list', playerList);
   };
 
-  addVote = ({votedFor, voter}) => {
+  addVote = ({ votedFor, voter }) => {
     this.playerSockets[voter].votedFor = votedFor;
-  }
+  };
 
-  removePlayer = playerId => {
+  removePlayer = (playerId) => {
     this.playerSockets[playerId].connected = false;
   };
 
   sendAll = (event, data, except) => {
     this.screenSocket.emit(event, data);
 
-    Object.values(this.playerSockets).forEach(player =>
+    Object.values(this.playerSockets).forEach((player) =>
       player.socket.emit(event, except === player.playerId ? null : data)
     );
   };
 
   startGame = () => {
     this.gameState = STARTING_STATE;
+    if (this.currentTurn) {
+      this.currentTurn = 0;
+      for (const playerId in this.playerSockets) {
+        const player = this.playerSockets[playerId];
+        player.votedFor = null;
+        player.votesAgainst = [];
+      }
+    }
     this.prompt = randArrayElement(this.prompts);
     this.impasta = randObjectElement(this.playerSockets);
     this.sendAll('starting state', this.prompt, this.impasta);
@@ -72,13 +89,12 @@ export default class Room {
   startTurn = () => {
     this.gameState = DRAWING_STATE;
     const playerArr = Object.values(this.playerSockets);
-    console.log(this.currentTurn);
     if (this.currentTurn >= playerArr.length) {
       this.startVoting();
     } else {
-      const {playerId, playerName} = playerArr[this.currentTurn++];
-      
-      this.sendAll('drawing state', {playerId, playerName});
+      const { playerId, playerName } = playerArr[this.currentTurn++];
+
+      this.sendAll('drawing state', { playerId, playerName });
     }
   };
 
@@ -89,33 +105,61 @@ export default class Room {
   };
 
   tallyVotes = () => {
-    const playerArr = Object.values(this.playerSockets);
     const impastaPlayer = this.playerSockets[this.impasta];
-    const votes = {
-      impastaVotes: {
-        key: this.impasta,
-        value: []
-      },
-      wrongVotes: {}
-    }
+    const votes = [
+      {
+        player: {
+          playerId: impastaPlayer.playerId,
+          playerName: impastaPlayer.playerName,
+          score: impastaPlayer.score
+        },
+        votesAgainst: impastaPlayer.votesAgainst
+      }
+    ];
 
-    playerArr.forEach(player => {
-      if (player.votedFor === this.impasta) {
-        player.score += 100;
-        votes.impastaVotes.value.push(player.playerId);
-      } else {
-        impastaPlayer.score += 100;
-        let wrongPlayer = votes.wrongVotes[player.votedFor];
-        if (wrongPlayer) {
-          wrongPlayer.push(player.playerId);
-        } else {
-          wrongPlayer = [player.playerId];
+    for (const playerId in this.playerSockets) {
+      let { playerName, votedFor, votesAgainst, score } = this.playerSockets[
+        playerId
+      ];
+
+      if (votedFor) {
+        if (votedFor === this.impasta) {
+          score += 100;
+          this.playerSockets[votedFor].votesAgainst.push({
+            playerId,
+            playerName,
+            score
+          });
+        } else if (votedFor !== this.impasta && votedFor !== null){
+          this.playerSockets[this.impasta].score += 100;
+          this.playerSockets[votedFor].votesAgainst.push({
+            playerId,
+            playerName,
+            score
+          });
         }
       }
-    })
 
-    this.gameState = END_ROUND_STATE;
-    console.log('end round state');
-    this.screenSocket.emit('votes tallied', votes);
-  }
+      if (playerId !== this.impasta) {
+        votes.push({
+          player: {
+            playerId,
+            playerName,
+            score
+          },
+          votesAgainst
+        });
+      }
+    }
+
+    this.rounds += 1;
+
+    if (this.rounds <= 3) {
+      this.gameState = END_ROUND_STATE;
+      this.screenSocket.emit('votes tallied', votes);
+    }else{
+      this.gameState = END_GAME_STATE;
+      this.screenSocket.emit('end game');
+    }
+  };
 }

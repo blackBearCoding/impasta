@@ -23,7 +23,7 @@ export default class RoomPage extends PureComponent {
       isImpasta: false,
       prompt: null,
       playerId: null,
-      currentPlayer: null
+      currentPlayer: null,
     };
   }
 
@@ -65,6 +65,12 @@ export default class RoomPage extends PureComponent {
         currentPlayer: msg
       });
     });
+
+    socket.on('voting state', () => {
+      this.setState({
+        gameState: VOTING_STATE,
+      })
+    })
 
     this.setState({ socket, playerId });
   }

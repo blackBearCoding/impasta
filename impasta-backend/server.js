@@ -29,6 +29,8 @@ screenIO.on('connect', socket => {
 
   socket.on('start turn', room.startTurn);
 
+  socket.on('start game', room.startGame);
+
   socket.on('disconnect', () => console.log('disconnect'));
 });
 

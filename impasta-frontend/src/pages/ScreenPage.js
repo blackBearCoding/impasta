@@ -6,9 +6,9 @@ import {
   STARTING_STATE,
   DRAWING_STATE,
   VOTING_STATE,
-  END_ROUND_STATE
+  END_ROUND_STATE,
+  SCORE_DISPLAY_STATE
 } from '../constants.js';
-import { mapIdToName } from '../utils';
 
 export default class ScreenPage extends PureComponent {
   constructor(props) {
@@ -19,7 +19,18 @@ export default class ScreenPage extends PureComponent {
       playerList: [],
       socket: null,
       gameState: LOBBY_STATE,
-      voteDisplay: []
+      voteDisplay: {
+        votesAgainst: [],
+        player: {},
+        isImpasta: false
+      },
+      impasta: null,
+      scores: [
+        {
+          playerName: null,
+          score: 0
+        }
+      ]
     };
   }
 
@@ -32,7 +43,7 @@ export default class ScreenPage extends PureComponent {
       console.log('connect');
     });
 
-    socket.on('player list', playerList => {
+    socket.on('player list', (playerList) => {
       this.setState({ playerList });
     });
 
@@ -57,13 +68,10 @@ export default class ScreenPage extends PureComponent {
       });
     });
 
-    socket.on('votes tallied', ({ impastaVotes, wrongVotes }) => {
-      this.setState(
-        {
-          gameState: END_ROUND_STATE
-        },
-        () => this.displayRoundResults(impastaVotes, Object.entries(wrongVotes))
-      );
+    socket.on('votes tallied', (votes) => {
+      console.log('votes', JSON.stringify(votes));
+
+      this.displayRoundResults(votes);
     });
 
     this.setState({ socket });
@@ -73,20 +81,30 @@ export default class ScreenPage extends PureComponent {
     this.state.socket.disconnect();
   }
 
-  displayRoundResults = (impastaVotes, wrongVotes) => {
-    if (!wrongVotes.length) {
-      this.setState({
-        voteDisplay: impastaVotes
-      });
+  displayRoundResults = (votes) => {
+    if (votes.length === this.state.playerList.length) {
+      var scores = votes.map((vote) => ({
+        playerName: vote.player.playerName,
+        score: vote.player.score
+      }));
+    }
+    const { player, votesAgainst } = votes.pop();
+    console.log(votes, votes.length, !votes.length);
+    this.setState({
+      gameState: END_ROUND_STATE,
+      voteDisplay: { player, votesAgainst, isImpasta: !votes.length },
+      scores: scores ? scores : this.state.scores
+    });
+
+    if (votes.length) {
+      setTimeout(() => this.displayRoundResults(votes), 2000);
     } else {
-      const wrongVote = wrongVotes.pop();
-      this.setState({
-        voteDisplay: wrongVote
-      });
-      setTimeout(
-        () => this.displayRoundResults(impastaVotes, wrongVotes),
-        2000
-      );
+      setTimeout(() => {
+        this.setState({
+          gameState: SCORE_DISPLAY_STATE
+        });
+        this.startNextRound()
+      }, 2000);
     }
   };
 
@@ -96,13 +114,20 @@ export default class ScreenPage extends PureComponent {
     }, 2000);
   };
 
+  startNextRound = () => {
+    const socket = this.state.socket;
+    setTimeout(() => {
+      socket.emit('start game');
+    }, 2000);
+  }
+
   render() {
     let display;
     switch (this.state.gameState) {
       case LOBBY_STATE:
         display = (
           <ul>
-            {this.state.playerList.map(player => (
+            {this.state.playerList.map((player) => (
               <li key={player.playerId}>{player.playerName}</li>
             ))}
           </ul>
@@ -122,22 +147,36 @@ export default class ScreenPage extends PureComponent {
         break;
 
       case END_ROUND_STATE:
+        const { votesAgainst, player, isImpasta } = this.state.voteDisplay;
+        display = (
+          <>
+            <p>
+              {votesAgainst.map((player) => player.playerName).join(', ')} voted
+              for {player.playerName}
+            </p>
+            <h2>Which was {isImpasta ? 'Correct' : 'Incorrect'}</h2>
+          </>
+        );
+        break;
+
+      case SCORE_DISPLAY_STATE:
         display = (
           <>
             <ul>
-              {mapIdToName(
-                this.state.playerList,
-                this.state.voteDisplay.value
-              ).map(name => {
-                return <li>{name}</li>;
-              })}
+              {this.state.scores.map((score) => (
+                <p>
+                  {score.playerName} has {score.score} points!
+                </p>
+              ))}
             </ul>
-            <h2>
-              {mapIdToName(this.state.playerList, this.state.voteDisplay.key)}
-            </h2>
           </>
         );
+        break;
+
+      default:
+        break;
     }
+
     return (
       <div>
         <h1>{this.state.code} (Screen)</h1>
