@@ -25,11 +25,19 @@ const screenIO = io.of('/screen');
 screenIO.on('connect', socket => {
   const code = socket.handshake.query.code;
   const room = allRooms[code];
+
+  if (!room) {
+    socket.disconnect();
+    return;
+  }
+
   room.screenSocket = socket;
 
   socket.on('start turn', room.startTurn);
 
   socket.on('start game', room.startGame);
+
+  socket.on('votes displayed', room.endRoundOrGame);
 
   socket.on('disconnect', () => console.log('disconnect'));
 });
@@ -42,6 +50,12 @@ roomIO.on('connect', socket => {
   console.log('Adding new player to: ' + code);
 
   const room = allRooms[code];
+
+  if (!room) {
+    socket.disconnect();
+    return;
+  }
+
   room.addPlayer(socket);
 
   socket.on('start game', room.startGame);
