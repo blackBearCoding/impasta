@@ -121,7 +121,7 @@ export default class Room {
       let { playerName, votedFor, votesAgainst, score } = this.playerSockets[
         playerId
       ];
-
+      console.log(score);
       if (votedFor) {
         if (votedFor === this.impasta) {
           score += 100;
@@ -130,7 +130,7 @@ export default class Room {
             playerName,
             score
           });
-        } else if (votedFor !== this.impasta && votedFor !== null){
+        } else if (votedFor !== this.impasta){
           this.playerSockets[this.impasta].score += 100;
           this.playerSockets[votedFor].votesAgainst.push({
             playerId,
@@ -154,7 +154,7 @@ export default class Room {
 
     this.rounds += 1;
 
-    if (this.rounds <= 3) {
+    if (this.rounds < 4) {
       this.gameState = END_ROUND_STATE;
       this.screenSocket.emit('votes tallied', votes);
     }else{
