@@ -6,7 +6,7 @@ import {
   END_ROUND_STATE,
   END_GAME_STATE
 } from './constants.js';
-import { randArrayElement, randObjectElement, mapIdToName } from './utils.js';
+import { randArrayElement, randObjectElement, mapIdToName, sortByScore } from './utils.js';
 
 export default class Room {
   constructor() {
@@ -48,16 +48,36 @@ export default class Room {
     for (const storedPlayerId in this.playerSockets) {
       const { playerName } = this.playerSockets[storedPlayerId];
       playerList.push({ playerName, playerId: storedPlayerId });
-      console.log('playerList', playerList);
     }
 
-    console.log('Sending player list: ', playerList);
     this.sendAll('player list', playerList);
   };
 
   addVote = ({ votedFor, voter }) => {
     this.playerSockets[voter].votedFor = votedFor;
   };
+
+  endGame = () => {
+    let winner;
+
+    let scores = Object.values(this.playerSockets).map(player => {
+      return {playerName: player.playerName, score: player.score};
+    })
+
+    scores = sortByScore(scores);
+
+    winner = scores[0].playerName;
+
+    this.sendAll('end game', winner);
+  }
+
+  endRoundOrGame = () => {
+    if (this.gameState === END_GAME_STATE) {
+      this.endGame()
+    } else {
+      this.startGame();
+    }
+  }
 
   removePlayer = playerId => {
     this.playerSockets[playerId].connected = false;
@@ -154,17 +174,16 @@ export default class Room {
       }
     }
 
-    if (this.rounds < 3) {
+    if (this.rounds < 2) {
       this.rounds++;
       this.gameState = END_ROUND_STATE;
-      console.log(votes);
       this.screenSocket.emit(
         'votes tallied',
         votes
       );
     } else {
       this.gameState = END_GAME_STATE;
-      this.screenSocket.emit('end game');
+      this.screenSocket.emit('votes tallied', votes);
     }
   };
 }

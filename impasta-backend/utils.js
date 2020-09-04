@@ -19,3 +19,7 @@ export const mapIdToName = (playerList, idList) => {
     });
   }
 }
+
+export const sortByScore = arr => {
+  return arr.sort((a,b) => a.score > b.score ? -1 : 1);
+}

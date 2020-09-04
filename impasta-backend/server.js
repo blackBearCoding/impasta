@@ -37,6 +37,8 @@ screenIO.on('connect', socket => {
 
   socket.on('start game', room.startGame);
 
+  socket.on('votes displayed', room.endRoundOrGame);
+
   socket.on('disconnect', () => console.log('disconnect'));
 });
 

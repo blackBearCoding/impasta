@@ -32,7 +32,8 @@ class ScreenPage extends PureComponent {
           playerName: null,
           score: 0
         }
-      ]
+      ],
+      winner: null
     };
   }
 
@@ -45,7 +46,7 @@ class ScreenPage extends PureComponent {
       console.log('connect');
     });
 
-    socket.on('player list', playerList => {
+    socket.on('player list', (playerList) => {
       this.setState({ playerList });
     });
 
@@ -70,16 +71,12 @@ class ScreenPage extends PureComponent {
       });
     });
 
-    socket.on('votes tallied', votes => {
-      console.log('votes', JSON.stringify(votes));
-
+    socket.on('votes tallied', (votes) => {
       this.displayRoundResults(votes);
     });
 
-    socket.on('end game', () => {
-      this.setState({
-        gameState: END_GAME_STATE
-      });
+    socket.on('end game', winner => {
+      this.displayGameResults(winner);
     });
 
     socket.on('disconnect', () => {
@@ -93,23 +90,31 @@ class ScreenPage extends PureComponent {
     this.state.socket.disconnect();
   }
 
-  displayRoundResults = votes => {
+  displayGameResults = (winner) => {
+    this.setState({
+      gameState: END_GAME_STATE,
+      winner
+    });
+  };
+
+  displayRoundResults = (votes) => {
+    console.log(JSON.stringify(votes));
     if (votes.length === this.state.playerList.length) {
-      var scores = votes.map(vote => ({
+      var scores = votes.map((vote) => ({
         playerName: vote.player.playerName,
         score: vote.player.score
       }));
     }
 
-    let player, votesAgainst = [];
-    
+    let player,
+      votesAgainst = [];
+
     do {
       const vote = votes.pop();
       player = vote.player;
       votesAgainst = vote.votesAgainst;
-    } while(!votesAgainst.length);
+    } while (!votesAgainst.length);
 
-    console.log(votes, votes.length, !votes.length);
     this.setState({
       gameState: END_ROUND_STATE,
       voteDisplay: { player, votesAgainst, isImpasta: !votes.length },
@@ -120,10 +125,14 @@ class ScreenPage extends PureComponent {
       setTimeout(() => this.displayRoundResults(votes), 2000);
     } else {
       setTimeout(() => {
-        this.setState({
-          gameState: SCORE_DISPLAY_STATE
-        });
-        this.startNextRound();
+        this.setState(
+          {
+            gameState: SCORE_DISPLAY_STATE
+          },
+          () => {
+            this.state.socket.emit('votes displayed');
+          }
+        );
       }, 2000);
     }
   };
@@ -147,7 +156,7 @@ class ScreenPage extends PureComponent {
       case LOBBY_STATE:
         display = (
           <ul>
-            {this.state.playerList.map(player => (
+            {this.state.playerList.map((player) => (
               <li key={player.playerId}>{player.playerName}</li>
             ))}
           </ul>
@@ -171,7 +180,7 @@ class ScreenPage extends PureComponent {
         display = (
           <>
             <p>
-              {votesAgainst.map(player => player.playerName).join(', ')} voted
+              {votesAgainst.map((player) => player.playerName).join(', ')} voted
               for {player.playerName}
             </p>
             <h2>Which was {isImpasta ? 'Correct' : 'Incorrect'}</h2>
@@ -183,7 +192,7 @@ class ScreenPage extends PureComponent {
         display = (
           <>
             <ul>
-              {this.state.scores.map(score => (
+              {this.state.scores.map((score) => (
                 <p>
                   {score.playerName} has {score.score} points!
                 </p>
@@ -194,9 +203,7 @@ class ScreenPage extends PureComponent {
         break;
 
       case END_GAME_STATE:
-        display = (
-          <p>And the winner is...</p>
-        )
+        display = <p>And the winner is {this.state.winner}</p>;
         break;
 
       default:
