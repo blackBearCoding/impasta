@@ -1,4 +1,5 @@
 import React, { PureComponent } from 'react';
+import {withRouter} from 'react-router-dom';
 import io from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -7,10 +8,11 @@ import {
   STARTING_STATE,
   DRAWING_STATE,
   WAITING_STATE,
-  VOTING_STATE
+  VOTING_STATE,
+  END_GAME_STATE
 } from '../constants.js';
 
-export default class RoomPage extends PureComponent {
+class RoomPage extends PureComponent {
   constructor(props) {
     super(props);
 
@@ -71,6 +73,16 @@ export default class RoomPage extends PureComponent {
         gameState: VOTING_STATE
       });
     });
+
+    socket.on('end game', () => {
+      this.setState({
+        gameState: END_GAME_STATE
+      })
+    })
+
+    socket.on('disconnect', () => {
+      this.props.history.push('/');
+    })
 
     this.setState({ socket, playerId });
   }
@@ -164,6 +176,14 @@ export default class RoomPage extends PureComponent {
         }
         break;
 
+      case END_GAME_STATE:
+        display = (
+          <p>
+            End game
+          </p>
+        )
+        break;
+
       default:
         break;
     }
@@ -176,3 +196,5 @@ export default class RoomPage extends PureComponent {
     );
   }
 }
+
+export default withRouter(RoomPage);

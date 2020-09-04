@@ -31,7 +31,7 @@ export default class Room {
     return code;
   };
 
-  addPlayer = (socket) => {
+  addPlayer = socket => {
     const { playerName, playerId } = socket.handshake.query;
     this.playerSockets[playerId] = {
       socket,
@@ -59,14 +59,14 @@ export default class Room {
     this.playerSockets[voter].votedFor = votedFor;
   };
 
-  removePlayer = (playerId) => {
+  removePlayer = playerId => {
     this.playerSockets[playerId].connected = false;
   };
 
   sendAll = (event, data, except) => {
     this.screenSocket.emit(event, data);
 
-    Object.values(this.playerSockets).forEach((player) =>
+    Object.values(this.playerSockets).forEach(player =>
       player.socket.emit(event, except === player.playerId ? null : data)
     );
   };
@@ -118,20 +118,21 @@ export default class Room {
     ];
 
     for (const playerId in this.playerSockets) {
-      let { playerName, votedFor, votesAgainst, score } = this.playerSockets[
+      const { playerName, votedFor, votesAgainst } = this.playerSockets[
         playerId
       ];
-      console.log(score);
+
       if (votedFor) {
         if (votedFor === this.impasta) {
-          score += 100;
+          const score = (this.playerSockets[playerId].score += 100);
           this.playerSockets[votedFor].votesAgainst.push({
             playerId,
             playerName,
             score
           });
-        } else if (votedFor !== this.impasta){
-          this.playerSockets[this.impasta].score += 100;
+        } else {
+          const score = (impastaPlayer.score += 100);
+          votes[0].player.score = score;
           this.playerSockets[votedFor].votesAgainst.push({
             playerId,
             playerName,
@@ -141,6 +142,7 @@ export default class Room {
       }
 
       if (playerId !== this.impasta) {
+        const score = this.playerSockets[playerId].score;
         votes.push({
           player: {
             playerId,
@@ -152,12 +154,15 @@ export default class Room {
       }
     }
 
-    this.rounds += 1;
-
-    if (this.rounds < 4) {
+    if (this.rounds < 3) {
+      this.rounds++;
       this.gameState = END_ROUND_STATE;
-      this.screenSocket.emit('votes tallied', votes);
-    }else{
+      console.log(votes);
+      this.screenSocket.emit(
+        'votes tallied',
+        votes
+      );
+    } else {
       this.gameState = END_GAME_STATE;
       this.screenSocket.emit('end game');
     }

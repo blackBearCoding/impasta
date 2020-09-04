@@ -1,4 +1,5 @@
 import React, { PureComponent } from 'react';
+import { withRouter } from 'react-router-dom';
 import io from 'socket.io-client';
 
 import {
@@ -7,10 +8,11 @@ import {
   DRAWING_STATE,
   VOTING_STATE,
   END_ROUND_STATE,
-  SCORE_DISPLAY_STATE
+  SCORE_DISPLAY_STATE,
+  END_GAME_STATE
 } from '../constants.js';
 
-export default class ScreenPage extends PureComponent {
+class ScreenPage extends PureComponent {
   constructor(props) {
     super(props);
 
@@ -43,7 +45,7 @@ export default class ScreenPage extends PureComponent {
       console.log('connect');
     });
 
-    socket.on('player list', (playerList) => {
+    socket.on('player list', playerList => {
       this.setState({ playerList });
     });
 
@@ -68,10 +70,20 @@ export default class ScreenPage extends PureComponent {
       });
     });
 
-    socket.on('votes tallied', (votes) => {
+    socket.on('votes tallied', votes => {
       console.log('votes', JSON.stringify(votes));
 
       this.displayRoundResults(votes);
+    });
+
+    socket.on('end game', () => {
+      this.setState({
+        gameState: END_GAME_STATE
+      });
+    });
+
+    socket.on('disconnect', () => {
+      this.props.history.push('/');
     });
 
     this.setState({ socket });
@@ -81,14 +93,22 @@ export default class ScreenPage extends PureComponent {
     this.state.socket.disconnect();
   }
 
-  displayRoundResults = (votes) => {
+  displayRoundResults = votes => {
     if (votes.length === this.state.playerList.length) {
-      var scores = votes.map((vote) => ({
+      var scores = votes.map(vote => ({
         playerName: vote.player.playerName,
         score: vote.player.score
       }));
     }
-    const { player, votesAgainst } = votes.pop();
+
+    let player, votesAgainst = [];
+    
+    do {
+      const vote = votes.pop();
+      player = vote.player;
+      votesAgainst = vote.votesAgainst;
+    } while(!votesAgainst.length);
+
     console.log(votes, votes.length, !votes.length);
     this.setState({
       gameState: END_ROUND_STATE,
@@ -103,7 +123,7 @@ export default class ScreenPage extends PureComponent {
         this.setState({
           gameState: SCORE_DISPLAY_STATE
         });
-        this.startNextRound()
+        this.startNextRound();
       }, 2000);
     }
   };
@@ -119,7 +139,7 @@ export default class ScreenPage extends PureComponent {
     setTimeout(() => {
       socket.emit('start game');
     }, 2000);
-  }
+  };
 
   render() {
     let display;
@@ -127,7 +147,7 @@ export default class ScreenPage extends PureComponent {
       case LOBBY_STATE:
         display = (
           <ul>
-            {this.state.playerList.map((player) => (
+            {this.state.playerList.map(player => (
               <li key={player.playerId}>{player.playerName}</li>
             ))}
           </ul>
@@ -151,7 +171,7 @@ export default class ScreenPage extends PureComponent {
         display = (
           <>
             <p>
-              {votesAgainst.map((player) => player.playerName).join(', ')} voted
+              {votesAgainst.map(player => player.playerName).join(', ')} voted
               for {player.playerName}
             </p>
             <h2>Which was {isImpasta ? 'Correct' : 'Incorrect'}</h2>
@@ -163,7 +183,7 @@ export default class ScreenPage extends PureComponent {
         display = (
           <>
             <ul>
-              {this.state.scores.map((score) => (
+              {this.state.scores.map(score => (
                 <p>
                   {score.playerName} has {score.score} points!
                 </p>
@@ -171,6 +191,12 @@ export default class ScreenPage extends PureComponent {
             </ul>
           </>
         );
+        break;
+
+      case END_GAME_STATE:
+        display = (
+          <p>And the winner is...</p>
+        )
         break;
 
       default:
@@ -186,3 +212,5 @@ export default class ScreenPage extends PureComponent {
     );
   }
 }
+
+export default withRouter(ScreenPage);
