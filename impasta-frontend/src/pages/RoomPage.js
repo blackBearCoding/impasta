@@ -23,7 +23,7 @@ export default class RoomPage extends PureComponent {
       isImpasta: false,
       prompt: null,
       playerId: null,
-      currentPlayer: null,
+      currentPlayer: null
     };
   }
 
@@ -41,7 +41,7 @@ export default class RoomPage extends PureComponent {
       console.log('connect');
     });
 
-    socket.on('player list', playerList => {
+    socket.on('player list', (playerList) => {
       const isFirst = playerList.length === 1 ? true : this.state.isFirst;
       this.setState({
         playerList,
@@ -49,7 +49,7 @@ export default class RoomPage extends PureComponent {
       });
     });
 
-    socket.on('starting state', msg => {
+    socket.on('starting state', (msg) => {
       console.log(msg);
       this.setState({
         gameState: STARTING_STATE,
@@ -58,7 +58,7 @@ export default class RoomPage extends PureComponent {
       });
     });
 
-    socket.on('drawing state', msg => {
+    socket.on('drawing state', (msg) => {
       this.setState({
         gameState:
           msg.playerId === this.state.playerId ? DRAWING_STATE : WAITING_STATE,
@@ -68,9 +68,9 @@ export default class RoomPage extends PureComponent {
 
     socket.on('voting state', () => {
       this.setState({
-        gameState: VOTING_STATE,
-      })
-    })
+        gameState: VOTING_STATE
+      });
+    });
 
     this.setState({ socket, playerId });
   }
@@ -89,10 +89,13 @@ export default class RoomPage extends PureComponent {
     socket.emit('start game');
   };
 
-  handleVote = playerId => {
+  handleVote = (playerId) => {
     const socket = this.state.socket;
-    socket.emit('player voted', {votedFor: playerId, voter: this.state.playerId});
-  }
+    socket.emit('player voted', {
+      votedFor: playerId,
+      voter: this.state.playerId
+    });
+  };
 
   render() {
     let display;
@@ -102,7 +105,7 @@ export default class RoomPage extends PureComponent {
         display = (
           <>
             <ul>
-              {this.state.playerList.map(player => (
+              {this.state.playerList.map((player) => (
                 <li key={player.playerId}>{player.playerName}</li>
               ))}
             </ul>
@@ -140,21 +143,25 @@ export default class RoomPage extends PureComponent {
         break;
 
       case VOTING_STATE:
-        display = (
-          <>
-            {this.state.playerList
-              .filter(player => {
-                return player.playerId !== this.state.playerId;
-              })
-              .map(player => {
-                return (
-                  <button onClick={() => this.handleVote(player.playerId)}>
-                    {player.playerName}
-                  </button>
-                );
-              })}
-          </>
-        );
+        if (this.state.isImpasta) {
+          display = <p>Sorry! You can't vote!</p>;
+        } else {
+          display = (
+            <>
+              {this.state.playerList
+                .filter((player) => {
+                  return player.playerId !== this.state.playerId;
+                })
+                .map((player) => {
+                  return (
+                    <button onClick={() => this.handleVote(player.playerId)}>
+                      {player.playerName}
+                    </button>
+                  );
+                })}
+            </>
+          );
+        }
         break;
 
       default:
