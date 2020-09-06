@@ -3,6 +3,7 @@ import React from 'react';
 import DrawingState from '../../pageStates/RoomPageStates/DrawingState/DrawingState';
 
 import './TestPage.css';
+import { Link } from 'react-router-dom';
 
 export default function TestPage(props) {
   let display;
