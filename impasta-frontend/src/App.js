@@ -21,6 +21,7 @@ export default function App() {
         />
         <Route exact path="/screen/:code" component={ScreenPage} />
         <Route exact path="/room-test" component={TestPage} />
+        <Route exact path="/room-test/:pageState" component={TestPage} />
         <Route
           exact
           path="/:code"
