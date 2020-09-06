@@ -20,7 +20,7 @@ export default function TestPage() {
         <div>
           <button
             onClick={() =>
-              setStateComponent({ name: '', component: <DrawingState /> })
+              setStateComponent({ name: 'Drawing State', component: <DrawingState /> })
             }
           >
             Drawing State

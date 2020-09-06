@@ -5,5 +5,10 @@
 }
 
 .drawing-state-canvas {
-  flex-grow: 1;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.drawing-state-canvas canvas {
+  display: block;
 }
