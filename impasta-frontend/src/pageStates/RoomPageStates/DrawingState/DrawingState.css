@@ -1,0 +1,9 @@
+.drawing-state-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawing-state-canvas {
+  flex-grow: 1;
+}

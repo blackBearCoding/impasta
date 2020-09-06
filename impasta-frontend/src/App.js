@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 
-import HomePage from './pages/HomePage';
-import ScreenPage from './pages/ScreenPage';
-import RoomPage from './pages/RoomPage';
+import HomePage from './pages/HomePage/HomePage';
+import ScreenPage from './pages/ScreenPage/ScreenPage';
+import RoomPage from './pages/RoomPage/RoomPage';
+
+import './global.css';
 
 export default function App() {
   const [userName, setUserName] = useState(null);
