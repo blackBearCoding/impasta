@@ -10,7 +10,7 @@ import {
   END_ROUND_STATE,
   SCORE_DISPLAY_STATE,
   END_GAME_STATE
-} from '../constants.js';
+} from '../../constants.js';
 
 class ScreenPage extends PureComponent {
   constructor(props) {

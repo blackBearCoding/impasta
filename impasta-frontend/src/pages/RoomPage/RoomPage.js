@@ -1,7 +1,9 @@
 import React, { PureComponent } from 'react';
-import {withRouter} from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
 import io from 'socket.io-client';
 import { v4 as uuidv4 } from 'uuid';
+
+import DrawingState from '../../pageStates/RoomPageStates/DrawingState/DrawingState';
 
 import {
   LOBBY_STATE,
@@ -10,7 +12,9 @@ import {
   WAITING_STATE,
   VOTING_STATE,
   END_GAME_STATE
-} from '../constants.js';
+} from '../../constants.js';
+
+import './RoomPage.css';
 
 class RoomPage extends PureComponent {
   constructor(props) {
@@ -43,7 +47,7 @@ class RoomPage extends PureComponent {
       console.log('connect');
     });
 
-    socket.on('player list', (playerList) => {
+    socket.on('player list', playerList => {
       const isFirst = playerList.length === 1 ? true : this.state.isFirst;
       this.setState({
         playerList,
@@ -51,7 +55,7 @@ class RoomPage extends PureComponent {
       });
     });
 
-    socket.on('starting state', (msg) => {
+    socket.on('starting state', msg => {
       console.log(msg);
       this.setState({
         gameState: STARTING_STATE,
@@ -60,7 +64,7 @@ class RoomPage extends PureComponent {
       });
     });
 
-    socket.on('drawing state', (msg) => {
+    socket.on('drawing state', msg => {
       this.setState({
         gameState:
           msg.playerId === this.state.playerId ? DRAWING_STATE : WAITING_STATE,
@@ -77,12 +81,12 @@ class RoomPage extends PureComponent {
     socket.on('end game', () => {
       this.setState({
         gameState: END_GAME_STATE
-      })
-    })
+      });
+    });
 
     socket.on('disconnect', () => {
       this.props.history.push('/');
-    })
+    });
 
     this.setState({ socket, playerId });
   }
@@ -101,7 +105,7 @@ class RoomPage extends PureComponent {
     socket.emit('start game');
   };
 
-  handleVote = (playerId) => {
+  handleVote = playerId => {
     const socket = this.state.socket;
     socket.emit('player voted', {
       votedFor: playerId,
@@ -117,7 +121,7 @@ class RoomPage extends PureComponent {
         display = (
           <>
             <ul>
-              {this.state.playerList.map((player) => (
+              {this.state.playerList.map(player => (
                 <li key={player.playerId}>{player.playerName}</li>
               ))}
             </ul>
@@ -147,10 +151,7 @@ class RoomPage extends PureComponent {
 
       case DRAWING_STATE:
         display = (
-          <>
-            <span>It's your turn!</span>
-            <button onClick={this.handleDrawingSubmit}>Submit</button>
-          </>
+          <DrawingState handleDrawingSubmit={this.handleDrawingSubmit} />
         );
         break;
 
@@ -161,10 +162,10 @@ class RoomPage extends PureComponent {
           display = (
             <>
               {this.state.playerList
-                .filter((player) => {
+                .filter(player => {
                   return player.playerId !== this.state.playerId;
                 })
-                .map((player) => {
+                .map(player => {
                   return (
                     <button onClick={() => this.handleVote(player.playerId)}>
                       {player.playerName}
@@ -177,18 +178,14 @@ class RoomPage extends PureComponent {
         break;
 
       case END_GAME_STATE:
-        display = (
-          <p>
-            End game
-          </p>
-        )
+        display = <p>End game</p>;
         break;
 
       default:
         break;
     }
     return (
-      <div>
+      <div className="full-height room-page-container">
         <h1>{this.state.code} (Room)</h1>
         <h2>{this.state.gameState}</h2>
         {display}
